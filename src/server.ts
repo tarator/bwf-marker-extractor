@@ -75,9 +75,35 @@ app.post('/upload', upload.array('wavFiles'), async (req, res) => {
 
             } catch (error) {
                 console.error(`Error processing ${file.originalname}:`, error);
+
+                const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                let userFriendlyMessage = 'Failed to process file';
+
+                // Convert technical errors to user-friendly messages
+                switch (errorMessage) {
+                    case 'NO_BWF_DATA':
+                        userFriendlyMessage = 'This file does not contain BWF markers';
+                        break;
+                    case 'FILE_NOT_FOUND':
+                        userFriendlyMessage = 'File could not be read (possibly due to special characters in filename)';
+                        break;
+                    case 'PROCESSING_ERROR':
+                        userFriendlyMessage = 'Could not process this file format';
+                        break;
+                    default:
+                        if (errorMessage.includes('NO_MARKERS_FOUND')) {
+                            userFriendlyMessage = 'This file does not contain any markers';
+                        } else if (errorMessage.includes('Failed to convert XML to labels')) {
+                            userFriendlyMessage = 'File processed but no markers were found';
+                        } else if (errorMessage.includes('XML parsing failed')) {
+                            userFriendlyMessage = 'File contains invalid BWF data';
+                        }
+                        break;
+                }
+
                 results.push({
                     originalFile: file.originalname,
-                    error: `Failed to process file: ${error instanceof Error ? error.message : 'Unknown error'}`
+                    error: userFriendlyMessage
                 });
             }
 
@@ -124,12 +150,23 @@ async function extractBwfMetadata(wavFilePath: string): Promise<string> {
         await execAsync(command);
 
         if (!fs.existsSync(xmlFilePath)) {
-            throw new Error('BWF metadata extraction failed - no XML output generated');
+            throw new Error('NO_BWF_DATA');
         }
 
         return xmlFilePath;
     } catch (error) {
-        throw new Error(`BWF extraction failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+        // Check for common error patterns and provide user-friendly messages
+        if (errorMessage.includes('File does not exist') || errorMessage.includes('No such file')) {
+            throw new Error('FILE_NOT_FOUND');
+        }
+
+        if (errorMessage.includes('Command failed') || errorMessage.includes('bwfmetaedit')) {
+            throw new Error('NO_BWF_DATA');
+        }
+
+        throw new Error('PROCESSING_ERROR');
     }
 }
 

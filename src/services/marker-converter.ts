@@ -20,6 +20,11 @@ export class MarkerConverter {
             // Parse XML to extract markers
             const markers = await this.parseMarkersFromXml(xmlContent);
 
+            // Check if any markers were found
+            if (markers.length === 0) {
+                throw new Error('NO_MARKERS_FOUND');
+            }
+
             // Convert markers to Audacity label format
             const labelsContent = this.formatAsAudacityLabels(markers);
 

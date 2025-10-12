@@ -137,6 +137,123 @@
             margin-bottom: 20px;
             border-left: 4px solid #17a2b8;
         }
+
+        /* T-Rex Loading Animation */
+        .trex-container {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .trex-container.show {
+            display: block;
+        }
+
+        .trex {
+            font-size: 48px;
+            display: inline-block;
+            animation: dance 1s ease-in-out infinite;
+            margin: 10px;
+        }
+
+        .trex-text {
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            margin-top: 15px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes dance {
+
+            0%,
+            100% {
+                transform: rotate(-5deg) scale(1);
+            }
+
+            25% {
+                transform: rotate(5deg) scale(1.1);
+            }
+
+            50% {
+                transform: rotate(-3deg) scale(0.95);
+            }
+
+            75% {
+                transform: rotate(8deg) scale(1.05);
+            }
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.7;
+            }
+        }
+
+        .trex-ground {
+            width: 100%;
+            height: 4px;
+            background: #4a5568;
+            margin: 10px 0;
+            border-radius: 2px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .trex-ground::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% {
+                left: -100%;
+            }
+
+            100% {
+                left: 100%;
+            }
+        }
+
+        .trex-steps {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        .trex-step {
+            color: white;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            margin: 5px;
+            opacity: 0.6;
+            transition: all 0.3s ease;
+        }
+
+        .trex-step.active {
+            opacity: 1;
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.05);
+        }
     </style>
 </head>
 
@@ -166,6 +283,20 @@
 
         <div class="progress" id="progress">
             <div class="progress-bar" id="progressBar"></div>
+        </div>
+
+        <!-- Dancing T-Rex Loading Animation -->
+        <div class="trex-container" id="trexContainer">
+            <div class="trex">🦖</div>
+            <div class="trex-text" id="trexText">T-Rex is extracting your BWF markers...</div>
+            <div class="trex-ground"></div>
+            <div class="trex-steps">
+                <div class="trex-step" id="step1">📁 Reading WAV file</div>
+                <div class="trex-step" id="step2">🔍 Extracting BWF data</div>
+                <div class="trex-step" id="step3">📊 Parsing markers</div>
+                <div class="trex-step" id="step4">🎵 Converting to labels</div>
+                <div class="trex-step" id="step5">✅ Ready for download</div>
+            </div>
         </div>
 
         <button class="upload-btn" id="processBtn" onclick="processFiles()" disabled>
@@ -260,29 +391,58 @@
             progressBar.style.width = '10%';
             results.innerHTML = '';
 
+            // Show T-Rex animation
+            showTrexAnimation();
+
             try {
+                // Step 1: Reading WAV file
+                await simulateStep('step1', 'T-Rex is reading your WAV files... 📁', 500);
+                progressBar.style.width = '20%';
+
+                // Step 2: Extracting BWF data
+                await simulateStep('step2', 'T-Rex is extracting BWF metadata... 🔍', 300);
+                progressBar.style.width = '40%';
+
+                // Step 3: Processing on server
                 const response = await fetch('/upload', {
                     method: 'POST',
                     body: formData
                 });
 
-                progressBar.style.width = '90%';
+                // Step 3: Parsing markers
+                await simulateStep('step3', 'T-Rex is parsing marker data... 📊', 400);
+                progressBar.style.width = '70%';
 
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
 
                 const data = await response.json();
+
+                // Step 4: Converting to labels
+                await simulateStep('step4', 'T-Rex is converting to Audacity labels... 🎵', 600);
+                progressBar.style.width = '90%';
+
+                // Step 5: Ready for download
+                await simulateStep('step5', 'T-Rex finished! Ready for download! 🎉', 400);
                 progressBar.style.width = '100%';
 
                 setTimeout(() => {
                     progress.style.display = 'none';
+                    hideTrexAnimation();
                     displayResults(data.results);
-                }, 500);
+                }, 800);
 
             } catch (error) {
                 console.error('Upload error:', error);
                 progress.style.display = 'none';
+                hideTrexAnimation();
+                updateTrexText('T-Rex encountered an error! 😱', 'error');
+
+                setTimeout(() => {
+                    hideTrexAnimation();
+                }, 2000);
+
                 results.innerHTML = `
                     <div class="result-item result-error">
                         <strong>Error:</strong> ${error.message}
@@ -291,6 +451,41 @@
             } finally {
                 processBtn.disabled = false;
                 processBtn.textContent = 'Process Files';
+            }
+        }
+
+        function showTrexAnimation() {
+            const trexContainer = document.getElementById('trexContainer');
+            trexContainer.classList.add('show');
+
+            // Reset all steps
+            for (let i = 1; i <= 5; i++) {
+                document.getElementById(`step${i}`).classList.remove('active');
+            }
+        }
+
+        function hideTrexAnimation() {
+            const trexContainer = document.getElementById('trexContainer');
+            trexContainer.classList.remove('show');
+        }
+
+        async function simulateStep(stepId, text, duration) {
+            // Activate current step
+            document.getElementById(stepId).classList.add('active');
+            updateTrexText(text);
+
+            // Wait for the specified duration
+            await new Promise(resolve => setTimeout(resolve, duration));
+        }
+
+        function updateTrexText(text, type = 'normal') {
+            const trexText = document.getElementById('trexText');
+            trexText.textContent = text;
+
+            if (type === 'error') {
+                trexText.style.color = '#ff6b6b';
+            } else {
+                trexText.style.color = 'white';
             }
         }
 
