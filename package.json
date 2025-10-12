@@ -1,0 +1,37 @@
+{
+    "name": "bwf-marker-extractor",
+    "version": "1.0.0",
+    "description": "Web application for extracting BWF markers from WAV files and converting to Audacity labels",
+    "main": "dist/server.js",
+    "scripts": {
+        "build": "tsc",
+        "start": "node dist/server.js",
+        "dev": "ts-node src/server.ts",
+        "watch": "tsc -w"
+    },
+    "keywords": [
+        "bwf",
+        "wav",
+        "markers",
+        "audacity",
+        "labels",
+        "audio"
+    ],
+    "author": "",
+    "license": "MIT",
+    "dependencies": {
+        "express": "^4.18.2",
+        "multer": "^1.4.5-lts.1",
+        "xml2js": "^0.6.2",
+        "cors": "^2.8.5"
+    },
+    "devDependencies": {
+        "@types/express": "^4.17.17",
+        "@types/multer": "^1.4.7",
+        "@types/xml2js": "^0.4.11",
+        "@types/cors": "^2.8.13",
+        "@types/node": "^20.4.5",
+        "ts-node": "^10.9.1",
+        "typescript": "^5.1.6"
+    }
+}

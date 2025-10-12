@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BWF Marker Extractor</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .upload-area {
+            border: 2px dashed #ccc;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 20px;
+            transition: border-color 0.3s;
+        }
+
+        .upload-area:hover,
+        .upload-area.dragover {
+            border-color: #007bff;
+            background-color: #f8f9fa;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .upload-btn {
+            background: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .upload-btn:hover {
+            background: #0056b3;
+        }
+
+        .upload-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .file-list {
+            margin: 20px 0;
+        }
+
+        .file-item {
+            background: #f8f9fa;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .results {
+            margin-top: 30px;
+        }
+
+        .result-item {
+            background: #e9ecef;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+
+        .result-success {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+        }
+
+        .result-error {
+            background: #f8d7da;
+            border-left: 4px solid #dc3545;
+        }
+
+        .download-btn {
+            background: #28a745;
+            color: white;
+            padding: 5px 15px;
+            text-decoration: none;
+            border-radius: 3px;
+            display: inline-block;
+            margin-top: 10px;
+        }
+
+        .download-btn:hover {
+            background: #1e7e34;
+        }
+
+        .progress {
+            width: 100%;
+            height: 20px;
+            background: #f0f0f0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+            display: none;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: #007bff;
+            transition: width 0.3s;
+        }
+
+        .info {
+            background: #d1ecf1;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border-left: 4px solid #17a2b8;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>BWF Marker Extractor</h1>
+
+        <div class="info">
+            <strong>How it works:</strong>
+            <ol>
+                <li>Upload one or more WAV files containing BWF marker data</li>
+                <li>The server extracts markers using <code>bwfmetaedit</code></li>
+                <li>Markers are converted to Audacity-compatible label files</li>
+                <li>Download the generated label files for import into Audacity</li>
+            </ol>
+        </div>
+
+        <div class="upload-area" id="uploadArea">
+            <p>Drop WAV files here or click to select</p>
+            <input type="file" id="fileInput" class="file-input" multiple accept=".wav,audio/wav">
+            <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+                Select WAV Files
+            </button>
+        </div>
+
+        <div class="file-list" id="fileList"></div>
+
+        <div class="progress" id="progress">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+
+        <button class="upload-btn" id="processBtn" onclick="processFiles()" disabled>
+            Process Files
+        </button>
+
+        <div class="results" id="results"></div>
+    </div>
+
+    <script>
+        let selectedFiles = [];
+
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const fileList = document.getElementById('fileList');
+        const processBtn = document.getElementById('processBtn');
+        const results = document.getElementById('results');
+        const progress = document.getElementById('progress');
+        const progressBar = document.getElementById('progressBar');
+
+        // Drag and drop functionality
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+
+            const files = Array.from(e.dataTransfer.files).filter(file =>
+                file.type === 'audio/wav' || file.name.toLowerCase().endsWith('.wav')
+            );
+
+            if (files.length > 0) {
+                addFiles(files);
+            } else {
+                alert('Please select only WAV files.');
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const files = Array.from(e.target.files);
+            addFiles(files);
+        });
+
+        function addFiles(files) {
+            files.forEach(file => {
+                if (!selectedFiles.find(f => f.name === file.name && f.size === file.size)) {
+                    selectedFiles.push(file);
+                }
+            });
+            updateFileList();
+        }
+
+        function removeFile(index) {
+            selectedFiles.splice(index, 1);
+            updateFileList();
+        }
+
+        function updateFileList() {
+            fileList.innerHTML = '';
+
+            selectedFiles.forEach((file, index) => {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-item';
+                fileItem.innerHTML = `
+                    <span>${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)</span>
+                    <button onclick="removeFile(${index})" style="background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer;">Remove</button>
+                `;
+                fileList.appendChild(fileItem);
+            });
+
+            processBtn.disabled = selectedFiles.length === 0;
+        }
+
+        async function processFiles() {
+            if (selectedFiles.length === 0) return;
+
+            const formData = new FormData();
+            selectedFiles.forEach(file => {
+                formData.append('wavFiles', file);
+            });
+
+            processBtn.disabled = true;
+            processBtn.textContent = 'Processing...';
+            progress.style.display = 'block';
+            progressBar.style.width = '10%';
+            results.innerHTML = '';
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                progressBar.style.width = '90%';
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                progressBar.style.width = '100%';
+
+                setTimeout(() => {
+                    progress.style.display = 'none';
+                    displayResults(data.results);
+                }, 500);
+
+            } catch (error) {
+                console.error('Upload error:', error);
+                progress.style.display = 'none';
+                results.innerHTML = `
+                    <div class="result-item result-error">
+                        <strong>Error:</strong> ${error.message}
+                    </div>
+                `;
+            } finally {
+                processBtn.disabled = false;
+                processBtn.textContent = 'Process Files';
+            }
+        }
+
+        function displayResults(resultsData) {
+            results.innerHTML = '<h3>Processing Results</h3>';
+
+            resultsData.forEach(result => {
+                const resultItem = document.createElement('div');
+
+                if (result.error) {
+                    resultItem.className = 'result-item result-error';
+                    resultItem.innerHTML = `
+                        <strong>${result.originalFile}</strong><br>
+                        <span style="color: #721c24;">Error: ${result.error}</span>
+                    `;
+                } else {
+                    resultItem.className = 'result-item result-success';
+                    resultItem.innerHTML = `
+                        <strong>${result.originalFile}</strong><br>
+                        <span style="color: #155724;">Successfully processed!</span><br>
+                        <a href="${result.downloadUrl}" class="download-btn" download>
+                            Download ${result.labelsFile}
+                        </a>
+                    `;
+                }
+
+                results.appendChild(resultItem);
+            });
+        }
+    </script>
+</body>
+
+</html>
