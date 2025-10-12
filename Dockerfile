@@ -1,8 +1,9 @@
-# Use Node.js LTS as base image
-FROM node:18-slim
+# Use Node.js LTS as base image (use Debian slim for broader security backports)
+FROM node:22-slim
 
-# Install build dependencies and system tools
-RUN apt-get update && apt-get install -y \
+# Update system packages and install build dependencies and system tools (avoid recommends)
+RUN apt-get update && apt-get upgrade -y && \
+    apt-get install -y --no-install-recommends \
     git \
     automake \
     autoconf \
@@ -13,6 +14,7 @@ RUN apt-get update && apt-get install -y \
     zlib1g-dev \
     curl \
     locales \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 # Set up UTF-8 locale

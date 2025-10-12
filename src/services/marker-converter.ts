@@ -52,7 +52,7 @@ export class MarkerConverter {
             const markers: Marker[] = [];
 
             // Debug: Log the XML structure to understand what we're working with
-            console.log('XML parsed result structure:', JSON.stringify(result, null, 2));
+            //console.log('XML parsed result structure:', JSON.stringify(result, null, 2));
 
             // Try multiple possible XML structures for BWF markers
 
