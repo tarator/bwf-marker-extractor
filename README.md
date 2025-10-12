@@ -1,6 +1,6 @@
 # BWF Marker Extractor
 
-A web application for extracting BWF (Broadcast Wave Format) markers from WAV files and converting them to Audacity-compatible label files.
+A web application for extracting BWF (Broadcast Wave Format) markers from WAV files which are written for example by Zoom H5 Handy Recorder and converting them to Audacity-compatible label files which can be imported using "File → Import → Labels" in Audacity.
 
 ## Features
 

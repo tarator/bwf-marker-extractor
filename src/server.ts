@@ -3,17 +3,19 @@ import multer from 'multer';
 import cors from 'cors';
 import path from 'path';
 import fs from 'fs';
-import { exec } from 'child_process';
+import { exec, execFile } from 'child_process';
 import { promisify } from 'util';
 import { MarkerConverter } from './services/marker-converter';
 
 const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 const app = express();
 const port = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(express.static('public'));
 
 // Configure multer for file uploads
@@ -27,7 +29,23 @@ const storage = multer.diskStorage({
     },
     filename: (req, file, cb) => {
         const timestamp = Date.now();
-        cb(null, `${timestamp}-${file.originalname}`);
+
+        // Fix UTF-8 encoding issues with filenames
+        let filename = file.originalname;
+        try {
+            // Try to decode if the filename was double-encoded
+            if (filename.includes('Ã')) {
+                // Convert from latin1 to UTF-8
+                filename = Buffer.from(filename, 'latin1').toString('utf8');
+            }
+        } catch (error) {
+            console.log('Filename encoding fix failed, using original:', filename);
+        }
+
+        console.log('Original filename:', file.originalname);
+        console.log('Fixed filename:', filename);
+
+        cb(null, `${timestamp}-${filename}`);
     }
 });
 
@@ -39,6 +57,9 @@ const upload = multer({
         } else {
             cb(new Error('Only WAV files are allowed'));
         }
+    },
+    limits: {
+        fileSize: 100 * 1024 * 1024 // 100MB limit
     }
 });
 
@@ -57,15 +78,25 @@ app.post('/upload', upload.array('wavFiles'), async (req, res) => {
         const results = [];
 
         for (const file of files) {
+            // Fix the filename encoding for display
+            let correctedFilename = file.originalname;
+            try {
+                if (correctedFilename.includes('Ã')) {
+                    correctedFilename = Buffer.from(correctedFilename, 'latin1').toString('utf8');
+                }
+            } catch (error) {
+                console.log('Filename encoding fix failed for display, using original:', correctedFilename);
+            }
+
             try {
                 // Extract BWF metadata using bwfmetaedit
                 const xmlFile = await extractBwfMetadata(file.path);
 
-                // Convert XML to Audacity labels
-                const labelsFile = await MarkerConverter.convertXmlToLabels(xmlFile, file.originalname);
+                // Convert XML to Audacity labels (use corrected filename for output naming)
+                const labelsFile = await MarkerConverter.convertXmlToLabels(xmlFile, correctedFilename);
 
                 results.push({
-                    originalFile: file.originalname,
+                    originalFile: correctedFilename,
                     labelsFile: path.basename(labelsFile),
                     downloadUrl: `/download/${path.basename(labelsFile)}`
                 });
@@ -74,7 +105,7 @@ app.post('/upload', upload.array('wavFiles'), async (req, res) => {
                 fs.unlinkSync(xmlFile);
 
             } catch (error) {
-                console.error(`Error processing ${file.originalname}:`, error);
+                console.error(`Error processing ${correctedFilename}:`, error);
 
                 const errorMessage = error instanceof Error ? error.message : 'Unknown error';
                 let userFriendlyMessage = 'Failed to process file';
@@ -102,7 +133,7 @@ app.post('/upload', upload.array('wavFiles'), async (req, res) => {
                 }
 
                 results.push({
-                    originalFile: file.originalname,
+                    originalFile: correctedFilename,
                     error: userFriendlyMessage
                 });
             }
@@ -144,10 +175,20 @@ async function extractBwfMetadata(wavFilePath: string): Promise<string> {
         fs.mkdirSync(outputDir, { recursive: true });
     }
 
+    // Debug: Log the actual file path being processed
+    console.log('Processing file:', wavFilePath);
+    console.log('File exists:', fs.existsSync(wavFilePath));
+
     try {
         // Use bwfmetaedit to extract metadata as XML
-        const command = `bwfmetaedit --out-xml="${xmlFilePath}" "${wavFilePath}"`;
-        await execAsync(command);
+        // Use execFile to avoid shell encoding issues with special characters
+        await execFileAsync('bwfmetaedit', [
+            `--out-xml=${xmlFilePath}`,
+            wavFilePath
+        ], {
+            encoding: 'utf8',
+            env: { ...process.env, LANG: 'en_US.UTF-8', LC_ALL: 'en_US.UTF-8' }
+        });
 
         if (!fs.existsSync(xmlFilePath)) {
             throw new Error('NO_BWF_DATA');
