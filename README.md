@@ -100,6 +100,7 @@ A web application for extracting BWF (Broadcast Wave Format) markers from WAV fi
 Environment variables:
 - `PORT` - Server port (default: 3000)
 - `NODE_ENV` - Environment (development/production)
+- `MAX_FILE_SIZE_MB` - Maximum file size per upload in MB (default: 100)
 
 ## Development
 

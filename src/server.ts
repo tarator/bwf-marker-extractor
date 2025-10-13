@@ -59,7 +59,7 @@ const upload = multer({
         }
     },
     limits: {
-        fileSize: 100 * 1024 * 1024 // 100MB limit
+        fileSize: parseInt(process.env.MAX_FILE_SIZE_MB || '100') * 1024 * 1024 // Configurable via env var, default 100MB
     }
 });
 
