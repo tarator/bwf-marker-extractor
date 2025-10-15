@@ -2,6 +2,10 @@
 
 A web application for extracting BWF (Broadcast Wave Format) markers from WAV files which are written for example by Zoom H5 Handy Recorder and converting them to Audacity-compatible label files which can be imported using "File → Import → Labels" in Audacity.
 
+## Free to use Online Demo
+
+Free to use online demo is available at: [https://bwf.projecttac.com](https://bwf.projecttac.com)
+
 ## Features
 
 - Upload multiple WAV files with embedded BWF marker data
